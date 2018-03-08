@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Why is Collector Pattern so Awesome | Tomas Votruba</title>
+    <meta charset="utf-8">
+    <meta name="robots" content="index, follow">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+
+    <link rel="alternate" type="application/rss+xml" title="Tomas Votruba Blog RSS" href="/rss.xml">
+
+    <link href="/assets/font-awesome/css/font-awesome.min.css?v=1.3" rel="stylesheet" type="text/css">
+
+    <link href="/assets/bootstrap/bootstrap.min.css?v=1.3" rel="stylesheet" type="text/css">
+
+    <link href="/assets/css/style.css?v=1.7" rel="stylesheet" type="text/css">
+
+</head>
+    <link href="/assets/prism/prism.css?v=0.1" rel="stylesheet" type="text/css">
+    <body>
+        <!-- post_id: 80 -->
+
+<div class="hidden-sm-down">
+    <nav class="navbar">
+        <div class="container-fluid">
+            <ul>
+                <li id="logo">
+                    Tomas Votruba
+                </li>
+                <li class="active">
+                    <a href="/">Blog</a>
+                </li>
+                <li>
+                    <a href="/mentoring-and-lectures/">Mentoring & Lectures</a>
+                </li>
+                <li>
+                    <a href="/talks/">Talks</a>
+                </li>
+                <li>
+                    <a href="/about/">About</a>
+                </li>
+                <li>
+                    <a href="/contact/">Contact</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+</div>
+
+<div class="hidden-md-up">
+    <nav class="navbar" id="mobile-menu">
+        <div class="container">
+            <a href="/" class="col-3 col-sm-3 active">
+                <em class="fa fa-book"></em>
+                <br>
+                PHP Blog
+            </a>
+            <a href="/mentoring-and-lectures/" class="col-3 col-sm-3">
+                <em class="fa fa-graduation-cap"></em>
+                <br>
+                Lectures
+            </a>
+            <a href="/about/" class="col-3 col-sm-3">
+                <em class="fa fa-id-badge"></em>
+                <br>
+                About
+            </a>
+            <a href="/contact/" class="col-3 col-sm-3">
+                <em class="fa fa-phone"></em>
+                <br>
+                Contact
+            </a>
+        </div>
+    </nav>
+</div>
+
+        <div class="mainContent">
+    <div class="container-fluid" id="post">
+        <h1 id="why-is-collector-pattern-so-awesome"><a href="#why-is-collector-pattern-so-awesome">Why is Collector Pattern so Awesome</a></h1>
+
+<ul class="list-inline post-metadata">
+    <li class="list-inline-item mr-3">
+        <em class="fa fa-clock-o fa-fw"></em>
+        <strong>7 min</strong>
+    </li>
+
+    <li class="list-inline-item mr-3">
+        <em class="fa fa-calendar fa-fw"></em>
+        <time datetime="2018-03-Thu">Thursday, March 8, 2018</time>
+    </li>
+
+        <li class="list-inline-item mr-3">
+            <em class="fa fa-fw fa-comments"></em>
+            <a href="https://www.tomasvotruba.cz/blog/2018/03/08/why-is-collector-pattern-so-awesome/#disqus_thread">X</a> comments
+        </li>
+
+        <li class="list-inline-item">
+            <em class="fa fa-fw fa-pencil"></em>
+            <a href="https://github.com/TomasVotruba/tomasvotruba.cz/edit/master/source/_posts/2018/2018-03-08-why-is-collector-pattern-so-awesome.md">Typo? Fix me please</a>
+        </li>
+
+</ul>
+
+
+
+        <div class="card">
+            <div class="card-body">
+                How to achieve <em>open for extension</em> and <em>closed for modification</em> <a href="https://github.com/jupeter/clean-code-php#openclosed-principle-ocp">one of sOlid principals</a>?
+<br><br>
+Why Collector pattern beats config tagging? How to use the in Symfony application? How it turns locked architecture into scaling one?
+            </div>
+        </div>
+
+        
+<p>I already <a href="/blog/2017/04/14/3-symfony-and-laravel-patterns-that-make-code-easy-to-extends-without-modification/#3-like-collecting-stamps-just-on-steroids">wrote about Collector pattern as one we can learn from Symfony or Laravel</a>. But they're so useful and underused I have need to write a more about them.</p>
+<p>Yesterday I worked on <a href="https://github.com/rectorphp/rector">Rector</a> and <strong>needed an entry point to add one or more Rectors by user</strong>.</p>
+<p><br></p>
+<p>To give you a context, now you can register particular Rectors to config <code>services:</code> section as you know from Symfony:</p>
+<pre><code class="language-yaml"># rector.yml
+services:
+    Rector\Rector\Contrib\Symfony\HttpKernel\GetterToPropertyRector: ~</code></pre>
+<p><br></p>
+<p>But <strong>how would you add <a href="https://github.com/rectorphp/rector/pull/324">dynamically built</a></strong> Rectors?</p>
+<pre><code class="language-php">$rector = $this-&gt;builderRectorFactory-&gt;create()
+    -&gt;matchMethodCallByType('Nette\Application\UI\Control')
+    -&gt;matchMethodName('invalidateControl')
+    -&gt;changeMethodNameTo('redrawControl');</code></pre>
+<h3 id="towards-scalable-architecture"><a href="#towards-scalable-architecture">Towards Scalable Architecture</a></h3>
+<p>Well, we could accept PR and hard-code it into application, that would work too. But the point is to allow end-user to <strong>add as many customs Rectors as he or she wants without need to modify our application</strong>.</p>
+<p>This is how <em>open/closed principle</em> looks like. If you still don't have the idea, see very nice and descriptive examples in <a href="https://github.com/jupeter/clean-code-php#openclosed-principle-ocp">jupeter/clean-code-php</a> on Github I help to maintain.</p>
+<p>Let's start with ideas:</p>
+<h2 id="1-add-a-provider"><a href="#1-add-a-provider">1. Add a Provider?</a></h2>
+<p>My first idea was a provider that would return such Rector:</p>
+<pre><code class="language-php">&lt;?php declare(strict_types=1);
+
+namespace App\Rector;
+
+use Rector\Contract\Rector\RectorInterface;
+
+final class NetteRectorProvider implements RectorInterface
+{
+    // `$builderRectorFactory` passed via contructor + property
+
+    public function provide(): RectorInterface
+    {
+        return $this-&gt;builderRectorFactory-&gt;create()
+            -&gt;matchMethodCallByType('Nette\Application\UI\Control')
+            -&gt;matchMethodName('invalidateControl')
+            -&gt;changeMethodNameTo('redrawControl');
+    }
+}</code></pre>
+<p>Such service is registered by user to the config:</p>
+<pre><code class="language-yaml"># rector.yml
+services:
+    _defaults:
+        autowire: true
+
+    App\Rector\NetteRectorProvider: ~</code></pre>
+<p>And collected by our application via <code>CompilerPass</code>:</p>
+<pre><code class="language-php">&lt;?php declare(strict_types=1);
+
+namespace Rector\RectorBuilder\DependencyInjection\CompilerPass;
+
+use Rector\Rector\RectorCollector;
+use Rector\RectorBuilder\Contract\RectorProviderInterface;
+use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\ExpressionLanguage\Expression;
+use Symplify\PackageBuilder\DependencyInjection\DefinitionFinder;
+
+final class RectorProvidersCompilerPass implements CompilerPassInterface
+{
+    public function process(ContainerBuilder $containerBuilder): void
+    {
+        $rectorCollectorDefinition = $containerBuilder-&gt;getDefinition(RectorCollector::class);
+
+        $rectorProviderDefinitions = DefinitionFinder::findAllByType(
+            $containerBuilder,
+            RectorProviderInterface::class
+        );
+
+        foreach ($rectorProviderDefinitions as $rectorProviderDefinition) {
+            $providedRector = new Expression(
+                sprintf('service("%s").provide()', $rectorProviderDefinition-&gt;getClass())
+            );
+            $rectorCollectorDefinition-&gt;addMethodCall('addRector', [$providedRector]);
+        }
+    }
+}</code></pre>
+<p>Are you curious what <code>DefinitionFinder</code>? It's just <a href="https://github.com/Symplify/Symplify/blob/3d058becb57efefe2307c88ee94acbfbd15ebd1c/packages/PackageBuilder/src/DependencyInjection/DefinitionFinder.php">a helper class</a> aroud <code>ContainerBuilder</code>.</p>
+<h2 id="2-use-expression-language"><a href="#2-use-expression-language">2. Use Expression Language?</a></h2>
+<p>Wait, what is this?</p>
+<pre><code class="language-php">$providedRector = new Expression(
+    sprintf('service("%s").provide()', $rectorProviderDefinition-&gt;getClass())
+);</code></pre>
+<p>That is part of <a href="https://symfony.com/doc/current/service_container/expression_language.html">Symfony Expression Language</a> that allows calling methods on services before container compilation.</p>
+<p>Could you guess, how the final code in compiled container would look like?</p>
+<p><br></p>
+<p>Something like this:</p>
+<pre><code class="language-php">$rectorCollector = new Rector\Rector\RectorCollector;
+$rectorCollector-&gt;addRector((new App\Rector\NetteRectorProvider)-&gt;provide());</code></pre>
+<p><strong>To be honest, it's crazy and unclear code to me.</strong> It also needs <code>symfony\expression</code> package to be installed manually. I don't want to refer people to this paragraph just to understand 3 lines in <code>CompilerPass</code>. That smells bad.</p>
+<p>But what now?</p>
+<h3 id="from-one-to-one-to-one-to-many"><a href="#from-one-to-one-to-one-to-many">From One-to-One to One-to-Many</a></h3>
+<p>To simulate real life we should have at least 2 problems at once :)</p>
+<p>The most common case is product in e-commerce. Product <em>JBL Charge 3</em> has 1 category - <em>speaker</em>. Ok, you write a code with Doctrine Entity that each product has one category. But as it happens in life that <em>change is the only constant</em>, website grows and search expands. &quot;A product needs to have multiple categories&quot; says the product manager. What now?</p>
+<p>The same happened for Rector - <strong>I need to add multiple Rectors in <code>RectorProvider</code></strong>. What now?</p>
+<pre><code class="language-php">&lt;?php declare(strict_types=1);
+
+namespace App\Rector;
+
+use Rector\Contract\Rector\RectorInterface;
+
+final class NetteRectorProvider implements RectorInterface
+{
+    // `$builderRectorFactory` passed via contructor + property
+
+    public function provide(): array // RectorInterface
+    {
+        $firstRector = $this-&gt;builderRectorFactory-&gt;create()
+            -&gt;matchMethodCallByType('Nette\Application\UI\Control')
+            -&gt;matchMethodName('validateControl')
+            -&gt;changeMethodNameTo('redrawControl');
+
+        $secondRector = $this-&gt;builderRectorFactory-&gt;create()
+            -&gt;matchMethodCallByType('Nette\Application\UI\Control')
+            -&gt;matchMethodName('invalidateControl') // prefix "in*"
+            -&gt;changeMethodNameTo('redrawControl');
+
+        // return ?;
+    }
+}</code></pre>
+<p>Damn! Mmm, tell people to use one provider per Rector:</p>
+<pre><code class="language-yaml"># rector.yml
+services:
+    _defaults:
+        autowire: true
+
+    App\Rector\NetteRectorProvider: ~
+    App\Rector\AnotherNetteRectorProvider: ~</code></pre>
+<p>Quick solution, yet smelly:</p>
+<ul>
+<li>But how to share common code between similar RectorProvider?</li>
+<li>Duplicate and decouple services?</li>
+<li>And what is the point of provider, if it can only add 1 new Rector?</li>
+<li>Why not register them in <code>services:</code> directly like the others?</li>
+</ul>
+<p>And flow of <em>WTFs</em> is coming at you.</p>
+<h2 id="3-does-collector-scale"><a href="#3-does-collector-scale">3. Does Collector Scale?</a></h2>
+<p>Let's try a different approach that Colletor pattern screams at us. We now have one-to-one <code>RectorColletor</code> implementation:</p>
+<pre><code class="language-php">&lt;?php declare(strict_types=1);
+
+namespace Rector\Rector;
+
+use Rector\Contract\Rector\RectorInterface;
+use Rector\RectorBuilder\Contract\RectorProviderInterface;
+
+final class RectorCollector
+{
+    public function addRector(RectorInterface $rector): void
+    {
+        $this-&gt;retcors[] = $rector;
+    }
+}</code></pre>
+<h3 id="what-do-we-want"><a href="#what-do-we-want">What do we want?</a></h3>
+<ul>
+<li>drop that expression language magic</li>
+<li>support one-to-many case</li>
+<li>have clear API with priority in PHP code rather in <code>CompilerPass</code> or config</li>
+<li>have typehint control</li>
+</ul>
+<h3 id="drop-that-expression-language-magic"><a href="#drop-that-expression-language-magic">Drop that Expression Language Magic</a></h3>
+<p>This is why Collector pattern is so awesome. <strong>You have 1 place to solve all your problems</strong> (or at least those 2 we have):</p>
+<pre><code class="language-diff"> &lt;?php declare(strict_types=1);
+
+ namespace Rector\Rector;
+
+ use Rector\Contract\Rector\RectorInterface;
+ use Rector\RectorBuilder\Contract\RectorProviderInterface;
+
+ final class RectorCollector
+ {
+     public function addRector(RectorInterface $rector): void
+     {
+         $this-&gt;retcors[] = $rector;
+     }
++
++    public function addRectorProvider(RectorProviderInterface $rectorProvider): void
++    {
++         $this-&gt;addRector($rectorProvider-&gt;provide());
++    }
+ }</code></pre>
+<p>Move config and expression language smell to new method that works with <code>RectorProviderInterface</code> directly. Good old PHP.</p>
+<p>And thanks to that, <strong>we can cleanup</strong> <code>CompilerPass</code>:</p>
+<pre><code class="language-diff">&lt;?php declare(strict_types=1);
+
+namespace Rector\RectorBuilder\DependencyInjection\CompilerPass;
+
+use Rector\Rector\RectorCollector;
+use Rector\RectorBuilder\Contract\RectorProviderInterface;
+use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\ExpressionLanguage\Expression;
+use Symplify\PackageBuilder\DependencyInjection\DefinitionFinder;
+
+final class RectorProvidersCompilerPass implements CompilerPassInterface
+{
+    public function process(ContainerBuilder $containerBuilder): void
+    {
+        $rectorCollectorDefinition = $containerBuilder-&gt;getDefinition(RectorCollector::class);
+
+        $rectorProviderDefinitions = DefinitionFinder::findAllByType(
+            $containerBuilder,
+            RectorProviderInterface::class
+        );
+
+        foreach ($rectorProviderDefinitions as $rectorProviderDefinition) {
+-           $providedRector = new Expression(
+-               sprintf('service("%s").provide()', $rectorProviderDefinition-&gt;getClass())
+-           );
+-           $rectorCollectorDefinition-&gt;addMethodCall('addRector', [$providedRector]);
++           $rectorCollectorDefinition-&gt;addMethodCall('addRectorProvider', [
++               '@' . $rectorProviderDefinition-&gt;getClass()
++           ]);
+        }
+    }
+}</code></pre>
+<h3 id="support-one-to-many-case"><a href="#support-one-to-many-case">Support one-to-many case</a></h3>
+<p>I know you already know how to solve this now. So let's put it together here:</p>
+<pre><code class="language-diff"> &lt;?php declare(strict_types=1);
+
+ namespace Rector\Rector;
+
+ use Rector\Contract\Rector\RectorInterface;
+ use Rector\RectorBuilder\Contract\RectorProviderInterface;
+
+ final class RectorCollector
+ {
+     public function addRector(RectorInterface $rector): void
+     {
+         $this-&gt;retcors[] = $rector;
+     }
+
+     public function addRectorProvider(RectorProviderInterface $rectorProvider): void
+     {
+-         $this-&gt;addRector($rectorProvider-&gt;provide());
++         foreach ($rectorProvider-&gt;provide() as $rector) {
++             $this-&gt;addRector($rector);
++         }
+     }
+ }</code></pre>
+<p>Great! Now we have:</p>
+<ul>
+<li>single entry point for <code>Collector</code> + <code>Provider</code></li>
+<li>typehinted <code>RectorInterface</code> control in code</li>
+<li>clean config for use and compiler for our code</li>
+<li>removed <code>symfony/expression-language</code> dependency</li>
+</ul>
+<h2 id="4-add-tagging"><a href="#4-add-tagging">4. Add Tagging?</a></h2>
+<p>We forget tagging, right? The most <a href="/blog/2017/02/12/drop-all-service-tags-in-your-nette-and-symfony-applications/">spread useless code in Symfony configs</a>.</p>
+<p><br></p>
+<blockquote class="blockquote text-center">
+    "Perfection is achieved, not when there is nothing more to add, but when there is nothing left to take away."
+    <footer class="blockquote-footer">Antoine de Saint-Exupery</footer></blockquote>
+<p><br></p>
+<p>Why would you add it and where? I don't take arguments like &quot;well, it's historical reasons&quot; and <a href="https://symfony.com/blog/new-in-symfony-3-4-simpler-injection-of-tagged-services"><code>!tagged</code></a>, since it add more coupling.</p>
+<p>Try to convince me though if you're sure about its advantages.</p>
+<h3 id="how-was-our-path-from-the-end"><a href="#how-was-our-path-from-the-end">How was our Path from the End?</a></h3>
+<p><em class="fa fa-fw fa-lg fa-check text-success"></em> Add provider</p>
+<p><em class="fa fa-fw fa-lg fa-times text-danger"></em> Use expression language?</p>
+<p><em class="fa fa-fw fa-lg fa-check text-success"></em> Does collector scale?</p>
+<p><em class="fa fa-fw fa-lg fa-times text-danger"></em> Add tagging</p>
+<h2 id="quot-git-story-quot-over-git-history"><a href="#quot-git-story-quot-over-git-history">&quot;Git Story&quot; over git history</a></h2>
+<p>I want to share with you one last idea. I could show you the final commit - or even worse - just the final files of (former) <a href="https://github.com/rectorphp/rector/blob/7305cf40d22cd1f241fcf8dcdebdc22b935616d8/src/NodeTraverser/RectorNodeTraverser.php"><code>RectorCollector</code></a> and <a href="https://github.com/rectorphp/rector/blob/7305cf40d22cd1f241fcf8dcdebdc22b935616d8/packages/RectorBuilder/src/DependencyInjection/CompilerPass/RectorProvidersCompilerPass.php"><code>RectorProvidersCompilerPass</code></a>.</p>
+<p>But that would teach nothing, because only when we fail, we learn something new.</p>
+<p><strong>Same can be applied to git history. When I see 2 final files with 2 commits, I learn nothing new.</strong> And pose questions and comments on blind paths, that author already took (and explains me again in words to my comments).</p>
+<p>Next time you squash 20 commits to 1, remember: <em>Git should tell the story, as the human history does</em>.</p>
+<p><br><br></p>
+<p>Happy collecting!</p>
+
+        <br>
+
+
+    <hr class="mt-4 mb-lg-5">
+
+    Do you want more on this topic? You might like these <strong>related posts</strong>:
+
+        <a href="/blog/2017/02/12/drop-all-service-tags-in-your-nette-and-symfony-applications">Drop all Service Tags in Your Nette and Symfony Applications</a>, 
+        <a href="/blog/2017/04/14/3-symfony-and-laravel-patterns-that-make-code-easy-to-extends-without-modification">3 Symfony and Laravel Patterns that Make Code Easy to Extend Without Modification</a>
+
+    <br>
+    <br>
+
+<div class="hireMe card border-info">
+    <div class="card-body bg-info text-white text-center">
+        <a href="/contact">
+            Do you like what I write about? <strong>Hire me and I'll do it for you!</strong>
+        </a>
+    </div>
+</div>
+
+
+        <h3 id="what-do-you-think"><a href="#what-do-you-think">What do you think?</a></h3>
+
+<div id="disqus_thread"></div>
+
+<script type="text/javascript">
+    /**
+     *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+     *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+     */
+    (function() {  // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//' + "itsworthsharing" + '.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+    </div>
+
+    <script src="/assets/prism/prism.js"></script>
+    <script id="dsq-count-scr" src="https://itsworthsharing.disqus.com/count.js" async defer></script>
+        </div>
+
+<script>
+    ga=function(){ ga.q.push(arguments) };
+    ga.q=[];
+    ga.l=+new Date;
+    ga('create', "UA-46082345-1", 'auto');
+    ga('send','pageview');
+</script>
+<script src="https://www.google-analytics.com/analytics.js" async defer></script>
+<script>
+    !function(f,b,e,v,n,t,s){ if(f.fbq)return;n=f.fbq=function(){ n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+            document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', "201338863559186");
+    fbq('track', 'PageView');
+</script>
+    </body>
+</html>
+
+
+
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Why is Collector Pattern so Awesome">
+    <meta property="og:description" content="How to achieve open for extension and closed for modification one of sOlid principals?
+
+Why Collector pattern beats config tagging? How to use the in Symfony application? How it turns locked architecture into scaling one?">
+    <meta property="og:url" content="https://www.tomasvotruba.cz/blog/2018/03/08/why-is-collector-pattern-so-awesome">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="@votrubaT">
+    <meta name="twitter:title" content="Why is Collector Pattern so Awesome">
+    <meta name="twitter:description" content="How to achieve open for extension and closed for modification one of sOlid principals?
+
+Why Collector pattern beats config tagging? How to use the in Symfony application? How it turns locked architecture into scaling one?">
